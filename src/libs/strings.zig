@@ -16,7 +16,7 @@ pub fn initWithSize(allocator: Allocator, size: usize) Allocator.Error!Self {
     return Self{ .buffer = buffer, .allocator = allocator };
 }
 
-const AppendError = error{
+pub const AppendError = error{
     ResizeFailed,
 };
 
