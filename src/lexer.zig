@@ -5,7 +5,7 @@ const ascci = std.ascii;
 const mem = std.mem;
 const Allocator = mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
-const Reader = std.io.AnyReader;
+const Reader = std.io.anyreader;
 
 const Self = @This();
 
@@ -60,9 +60,9 @@ fn trimLeft(self: *Self) void {
     self.data = self.data[begin..];
 }
 
-pub const GetNextToken = error{InvalidToken} || Reader.Error || Allocator.Error || String.AppendError;
+pub const GetNextTokenError = error{InvalidToken} || Reader.Error || Allocator.Error || String.AppendError;
 
-pub fn getNextToken(self: *Self) GetNextToken!Token {
+pub fn getNextToken(self: *Self) GetNextTokenError!Token {
     if (self.not_filled) {
         self.not_filled = false;
         _ = try self.fillBuffer();
