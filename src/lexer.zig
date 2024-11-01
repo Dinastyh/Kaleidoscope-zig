@@ -17,12 +17,22 @@ data: []u8 = undefined,
 oef: bool = false,
 not_filled: bool = true,
 
+pub const BinaryOperator = enum(u8) {
+    addition = '+',
+    substraction = '-',
+    multiplication = '*',
+    division = '/',
+    modulus = '%',
+};
+
 pub const Token = union(enum) {
     eof: void,
     def: void,
     @"extern": void,
     identifer: String,
     number: f64,
+    parenthesis: enum(u8) { right = '(', left = ')' },
+    operator: BinaryOperator,
 };
 
 pub fn init(allocator: Allocator, reader: Reader) Reader.Error!Self {
@@ -129,6 +139,19 @@ pub fn getNextToken(self: *Self) GetNextToken!Token {
             str.getSlice(),
         ) catch unreachable };
     }
+
+    switch (self.data[0]) {
+        '(', ')' => |c| {
+            self.data = self.data[1..];
+            return Token{ .parenthesis = @enumFromInt(c) };
+        },
+        '+', '-', '*', '/', '%' => |c| {
+            self.data = self.data[1..];
+            return Token{ .operator = @enumFromInt(c) };
+        },
+        else => {},
+    }
+
     return error.InvalidToken;
 }
 
@@ -184,6 +207,45 @@ test "Parse number" {
     const token = try lexer.getNextToken();
     try std.testing.expect(token == Token.number);
     try std.testing.expect(token.number == 7778.636);
+}
+
+test "Parse operator" {
+    const buffer = try std.fmt.allocPrint(std.testing.allocator, "+-*/%", .{});
+    defer std.testing.allocator.free(buffer);
+    var stream = std.io.fixedBufferStream(buffer);
+    var lexer = try Self.init(std.testing.allocator, stream.reader().any());
+    defer lexer.deinit();
+
+    var token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.operator);
+    try std.testing.expect(token.operator == .addition);
+    token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.operator);
+    try std.testing.expect(token.operator == .substraction);
+    token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.operator);
+    try std.testing.expect(token.operator == .multiplication);
+    token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.operator);
+    try std.testing.expect(token.operator == .division);
+    token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.operator);
+    try std.testing.expect(token.operator == .modulus);
+}
+
+test "Parse parenthesis" {
+    const buffer = try std.fmt.allocPrint(std.testing.allocator, "()", .{});
+    defer std.testing.allocator.free(buffer);
+    var stream = std.io.fixedBufferStream(buffer);
+    var lexer = try Self.init(std.testing.allocator, stream.reader().any());
+    defer lexer.deinit();
+
+    var token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.parenthesis);
+    try std.testing.expect(token.parenthesis == .right);
+    token = try lexer.getNextToken();
+    try std.testing.expect(token == Token.parenthesis);
+    try std.testing.expect(token.parenthesis == .left);
 }
 
 test "Parse def, identifer and oef" {
