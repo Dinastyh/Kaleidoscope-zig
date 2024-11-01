@@ -16,6 +16,8 @@ buffer: [1024]u8 = [_]u8{0} ** 1024,
 data: []u8 = undefined,
 oef: bool = false,
 not_filled: bool = true,
+current_token: ?Token = null,
+prev_token: ?Token = null,
 
 pub const BinaryOperator = enum(u8) {
     addition = '+',
@@ -45,6 +47,16 @@ pub fn deinit(self: *Self) void {
     self.arena.deinit();
 }
 
+pub fn getCurrentToken(self: *const Self) error{NotFilled}!Token {
+    if (self.current_token) |token| return token;
+    return error.NotFilled;
+}
+
+pub fn getPrevToken(self: *const Self) error{NotFilled}!Token {
+    if (self.prev_token) |token| return token;
+    return error.NotFilled;
+}
+
 fn fillBuffer(self: *Self) Reader.Error!usize {
     const r_size = try self.reader.read(&self.buffer);
     self.data = self.buffer[0..r_size];
@@ -60,6 +72,12 @@ fn trimLeft(self: *Self) void {
     self.data = self.data[begin..];
 }
 
+fn setAndReturn(self: *Self, token: Token) Token {
+    self.prev_token = self.current_token;
+    self.current_token = token;
+    return token;
+}
+
 pub const GetNextTokenError = error{InvalidToken} || Reader.Error || Allocator.Error || String.AppendError;
 
 pub fn getNextToken(self: *Self) GetNextTokenError!Token {
@@ -68,7 +86,7 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
         _ = try self.fillBuffer();
     }
 
-    if (self.oef and self.data.len == 0) return Token{ .eof = {} };
+    if (self.oef and self.data.len == 0) setAndReturn(return Token{ .eof = {} });
     while (true) {
         self.trimLeft();
         if (self.data.len != 0) break;
@@ -104,12 +122,12 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
         }
         if (str.compare("def")) {
             str.deinit();
-            return Token{ .def = {} };
+            return setAndReturn(Token{ .def = {} });
         } else if (str.compare("extern")) {
             str.deinit();
-            return Token{ .@"extern" = {} };
+            return setAndReturn(Token{ .@"extern" = {} });
         }
-        return Token{ .identifer = str };
+        return setAndReturn(Token{ .identifer = str });
     }
 
     // Number case
@@ -134,20 +152,20 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
 
             if (try self.fillBuffer() == 0) break;
         }
-        return Token{ .number = std.fmt.parseFloat(
+        return setAndReturn(Token{ .number = std.fmt.parseFloat(
             f64,
             str.getSlice(),
-        ) catch unreachable };
+        ) catch unreachable });
     }
 
     switch (self.data[0]) {
         '(', ')' => |c| {
             self.data = self.data[1..];
-            return Token{ .parenthesis = @enumFromInt(c) };
+            return setAndReturn(Token{ .parenthesis = @enumFromInt(c) });
         },
         '+', '-', '*', '/', '%' => |c| {
             self.data = self.data[1..];
-            return Token{ .operator = @enumFromInt(c) };
+            return setAndReturn(Token{ .operator = @enumFromInt(c) });
         },
         else => {},
     }
