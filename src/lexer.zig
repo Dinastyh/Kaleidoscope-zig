@@ -5,7 +5,7 @@ const ascci = std.ascii;
 const mem = std.mem;
 const Allocator = mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
-const Reader = std.io.anyreader;
+const Reader = std.io.AnyReader;
 
 const Self = @This();
 
@@ -78,7 +78,7 @@ fn setAndReturn(self: *Self, token: Token) Token {
     return token;
 }
 
-pub const GetNextTokenError = error{InvalidToken} || Reader.Error || Allocator.Error || String.AppendError;
+pub const GetNextTokenError = error{ InvalidToken, NotFilled } || Reader.Error || Allocator.Error || String.AppendError;
 
 pub fn getNextToken(self: *Self) GetNextTokenError!Token {
     if (self.not_filled) {
@@ -86,7 +86,7 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
         _ = try self.fillBuffer();
     }
 
-    if (self.oef and self.data.len == 0) setAndReturn(return Token{ .eof = {} });
+    if (self.oef and self.data.len == 0) self.setAndReturn(return Token{ .eof = {} });
     while (true) {
         self.trimLeft();
         if (self.data.len != 0) break;
@@ -122,12 +122,12 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
         }
         if (str.compare("def")) {
             str.deinit();
-            return setAndReturn(Token{ .def = {} });
+            return self.setAndReturn(Token{ .def = {} });
         } else if (str.compare("extern")) {
             str.deinit();
-            return setAndReturn(Token{ .@"extern" = {} });
+            return self.setAndReturn(Token{ .@"extern" = {} });
         }
-        return setAndReturn(Token{ .identifer = str });
+        return self.setAndReturn(Token{ .identifer = str });
     }
 
     // Number case
@@ -152,7 +152,7 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
 
             if (try self.fillBuffer() == 0) break;
         }
-        return setAndReturn(Token{ .number = std.fmt.parseFloat(
+        return self.setAndReturn(Token{ .number = std.fmt.parseFloat(
             f64,
             str.getSlice(),
         ) catch unreachable });
@@ -161,11 +161,11 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
     switch (self.data[0]) {
         '(', ')' => |c| {
             self.data = self.data[1..];
-            return setAndReturn(Token{ .parenthesis = @enumFromInt(c) });
+            return self.setAndReturn(Token{ .parenthesis = @enumFromInt(c) });
         },
         '+', '-', '*', '/', '%' => |c| {
             self.data = self.data[1..];
-            return setAndReturn(Token{ .operator = @enumFromInt(c) });
+            return self.setAndReturn(Token{ .operator = @enumFromInt(c) });
         },
         else => {},
     }
