@@ -10,7 +10,6 @@ const Reader = std.io.AnyReader;
 const Self = @This();
 
 allocator: Allocator,
-arena: ArenaAllocator,
 reader: Reader,
 buffer: [1024]u8 = [_]u8{0} ** 1024,
 data: []u8 = undefined,
@@ -34,17 +33,17 @@ pub const Token = union(enum) {
     identifer: String,
     number: f64,
     parenthesis: enum(u8) { right = '(', left = ')' },
+    comma: void,
     operator: BinaryOperator,
 };
 
 pub fn init(allocator: Allocator, reader: Reader) Reader.Error!Self {
-    const arena = std.heap.ArenaAllocator.init(allocator);
-    const self = Self{ .allocator = allocator, .arena = arena, .reader = reader };
+    const self = Self{ .allocator = allocator, .reader = reader };
     return self;
 }
 
 pub fn deinit(self: *Self) void {
-    self.arena.deinit();
+    _ = self;
 }
 
 pub fn getCurrentToken(self: *const Self) error{NotFilled}!Token {
@@ -178,7 +177,6 @@ test "Parse oef" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     try std.testing.expect(try lexer.getNextToken() == Token.eof);
 }
@@ -188,7 +186,6 @@ test "Parse def" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     try std.testing.expect(try lexer.getNextToken() == Token.def);
 }
@@ -198,7 +195,6 @@ test "Parse extern" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     try std.testing.expect(try lexer.getNextToken() == Token.@"extern");
 }
@@ -208,11 +204,11 @@ test "Parse identifer" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     const token = try lexer.getNextToken();
     try std.testing.expect(token == Token.identifer);
     try std.testing.expect(token.identifer.compare("aaaaa59e"));
+    token.identifer.deinit();
 }
 
 test "Parse number" {
@@ -220,7 +216,6 @@ test "Parse number" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     const token = try lexer.getNextToken();
     try std.testing.expect(token == Token.number);
@@ -232,7 +227,6 @@ test "Parse operator" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     var token = try lexer.getNextToken();
     try std.testing.expect(token == Token.operator);
@@ -256,7 +250,6 @@ test "Parse parenthesis" {
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     var token = try lexer.getNextToken();
     try std.testing.expect(token == Token.parenthesis);
