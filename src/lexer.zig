@@ -19,11 +19,21 @@ current_token: ?Token = null,
 prev_token: ?Token = null,
 
 pub const BinaryOperator = enum(u8) {
+    superior = '>',
+    inferior = '<',
     addition = '+',
     substraction = '-',
     multiplication = '*',
     division = '/',
     modulus = '%',
+
+    pub fn getPrecedence(self: @This()) usize {
+        switch (self) {
+            .superior, .inferior => 10,
+            .addition, .substraction => 20,
+            .multiplication, .division, .modulus => 40,
+        }
+    }
 };
 
 pub const Token = union(enum) {
@@ -107,7 +117,7 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
 
     // Def, identifer and extern case
     if (ascci.isAlphabetic(self.data[0])) {
-        var str = try String.init(self.arena.allocator());
+        var str = try String.init(self.allocator);
         while (true) {
             var index: usize = 1;
             while (index < self.data.len and ascci.isAlphanumeric(self.data[index])) : (index += 1) {}
@@ -131,7 +141,7 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
 
     // Number case
     else if (ascci.isDigit(self.data[0])) {
-        var str = try String.init(self.arena.allocator());
+        var str = try String.init(self.allocator);
         defer str.deinit();
         while (true) {
             var index: usize = 1;
@@ -162,7 +172,11 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
             self.data = self.data[1..];
             return self.setAndReturn(Token{ .parenthesis = @enumFromInt(c) });
         },
-        '+', '-', '*', '/', '%' => |c| {
+        ',' => {
+            self.data = self.data[1..];
+            return self.setAndReturn(Token{ .comma = {} });
+        },
+        '+', '-', '*', '/', '%', '<', '>' => |c| {
             self.data = self.data[1..];
             return self.setAndReturn(Token{ .operator = @enumFromInt(c) });
         },
@@ -259,16 +273,25 @@ test "Parse parenthesis" {
     try std.testing.expect(token.parenthesis == .left);
 }
 
+test "Parse comma" {
+    const buffer = try std.fmt.allocPrint(std.testing.allocator, ",", .{});
+    defer std.testing.allocator.free(buffer);
+    var stream = std.io.fixedBufferStream(buffer);
+    var lexer = try Self.init(std.testing.allocator, stream.reader().any());
+
+    try std.testing.expect(try lexer.getNextToken() == Token.comma);
+}
+
 test "Parse def, identifer and oef" {
     const buffer = try std.fmt.allocPrint(std.testing.allocator, "def aaaa", .{});
     defer std.testing.allocator.free(buffer);
     var stream = std.io.fixedBufferStream(buffer);
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
-    defer lexer.deinit();
 
     try std.testing.expect(try lexer.getNextToken() == Token.def);
     const token = try lexer.getNextToken();
     try std.testing.expect(token == Token.identifer);
     try std.testing.expect(token.identifer.compare("aaaa"));
     try std.testing.expect(try lexer.getNextToken() == Token.eof);
+    token.identifer.deinit();
 }
