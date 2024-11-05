@@ -28,11 +28,11 @@ pub const BinaryOperator = enum(u8) {
     modulus = '%',
 
     pub fn getPrecedence(self: @This()) usize {
-        switch (self) {
+        return switch (self) {
             .superior, .inferior => 10,
             .addition, .substraction => 20,
             .multiplication, .division, .modulus => 40,
-        }
+        };
     }
 };
 
