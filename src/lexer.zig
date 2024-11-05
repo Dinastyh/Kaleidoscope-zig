@@ -44,6 +44,7 @@ pub const Token = union(enum) {
     number: f64,
     parenthesis: enum(u8) { right = '(', left = ')' },
     comma: void,
+    semicolon: void,
     operator: BinaryOperator,
 };
 
@@ -176,6 +177,10 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
             self.data = self.data[1..];
             return self.setAndReturn(Token{ .comma = {} });
         },
+        ';' => {
+            self.data = self.data[1..];
+            return self.setAndReturn(Token{ .semicolon = {} });
+        },
         '+', '-', '*', '/', '%', '<', '>' => |c| {
             self.data = self.data[1..];
             return self.setAndReturn(Token{ .operator = @enumFromInt(c) });
@@ -280,6 +285,15 @@ test "Parse comma" {
     var lexer = try Self.init(std.testing.allocator, stream.reader().any());
 
     try std.testing.expect(try lexer.getNextToken() == Token.comma);
+}
+
+test "Parse semicolon" {
+    const buffer = try std.fmt.allocPrint(std.testing.allocator, ";", .{});
+    defer std.testing.allocator.free(buffer);
+    var stream = std.io.fixedBufferStream(buffer);
+    var lexer = try Self.init(std.testing.allocator, stream.reader().any());
+
+    try std.testing.expect(try lexer.getNextToken() == Token.semicolon);
 }
 
 test "Parse def, identifer and oef" {
