@@ -39,6 +39,7 @@ fn parseNumber(self: *Self) ParserError!*AstExpr {
 
 fn parseBinOpRHS(self: *Self, minimal_prec: usize, LHS: *AstExpr) ParserError!*AstExpr {
     var output = LHS;
+    errdefer output.destroy(self.arena.allocator());
     while (true) {
         const op = try self.lexer.getCurrentToken();
         if (op != Token.operator or op.operator.getPrecedence() < minimal_prec) return output;
@@ -94,9 +95,12 @@ fn parseTopLevelExpr(self: *Self) ParserError!AstFunction {
 
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
-    errdefer allocated_LHS.destroy(self.arena.allocator());
 
-    const token = try self.lexer.getNextToken();
+    // No errdefer to avoid double free
+    const token = self.lexer.getNextToken() catch |e| {
+        allocated_LHS.destroy(self.arena.allocator());
+        return e;
+    };
     if (token != .operator) return allocated_LHS;
     return try self.parseBinOpRHS(0, allocated_LHS);
 }
