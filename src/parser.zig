@@ -36,3 +36,11 @@ pub fn deinit(self: *Self) void {
 fn parseNumber(self: *Self) ParserError!*AstExpr {
     return try AstExpr.alloc(.{ .number = (try self.lexer.getCurrentToken()).number }, self.arena.allocator());
 }
+fn parseExpression(self: *Self) ParserError!*AstExpr {
+    const allocated_LHS = try self.parsePrimary();
+    errdefer allocated_LHS.destroy(self.arena.allocator());
+
+    const token = try self.lexer.getNextToken();
+    if (token != .operator) return allocated_LHS;
+    return try self.parseBinOpRHS(0, allocated_LHS);
+}
