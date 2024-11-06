@@ -81,6 +81,11 @@ fn parseDefinition(self: *Self) ParserError!AstFunction {
     const body = try self.parseExpression();
     return AstFunction{ .proto = proto, .body = body };
 }
+
+fn parseExtern(self: *Self) ParserError!AstPrototype {
+    return try self.parsePrototype();
+}
+
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
     errdefer allocated_LHS.destroy(self.arena.allocator());
