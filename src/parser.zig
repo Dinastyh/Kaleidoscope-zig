@@ -75,6 +75,12 @@ fn parsePrototype(self: *Self) ParserError!AstPrototype {
     return AstPrototype{ .name = name, .args = args };
 }
 
+fn parseDefinition(self: *Self) ParserError!AstFunction {
+    const proto = try self.parsePrototype();
+    errdefer proto.destroy();
+    const body = try self.parseExpression();
+    return AstFunction{ .proto = proto, .body = body };
+}
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
     errdefer allocated_LHS.destroy(self.arena.allocator());
