@@ -96,12 +96,12 @@ pub fn getNextToken(self: *Self) GetNextTokenError!Token {
         _ = try self.fillBuffer();
     }
 
-    if (self.oef and self.data.len == 0) self.setAndReturn(return Token{ .eof = {} });
     while (true) {
         self.trimLeft();
         if (self.data.len != 0) break;
         if (try self.fillBuffer() == 0) break;
     }
+    if (self.oef and self.data.len == 0) self.setAndReturn(return Token{ .eof = {} });
 
     // Comment case
     if (self.data[0] == '#') {
