@@ -140,3 +140,39 @@ pub fn parseParenthesis(self: *Self) ParserError!*AstExpr {
     if (next_token.parenthesis != .left) return error.InvalidToken;
     return expr;
 }
+
+pub fn runTopLevel(self: *Self) !void {
+    const stdout = std.io.getStdOut();
+    const stderr = std.io.getStdErr();
+    while (true) {
+        _ = try stdout.write("Kaleidoscope TolLevel: \n");
+        switch (try self.lexer.getNextToken()) {
+            .eof => return,
+            .semicolon => continue,
+            .def => {
+                const def = self.parseDefinition() catch {
+                    _ = try stderr.write("Definition Parsing failed\n");
+                    continue;
+                };
+                defer def.destroy(self.arena.allocator());
+                _ = try stdout.write("Definition Parsed");
+            },
+            .@"extern" => {
+                const ext = self.parseExtern() catch {
+                    _ = try stderr.write("Extern Parsing failed\n");
+                    continue;
+                };
+                defer ext.destroy();
+                _ = try stdout.write("Extern Parsed");
+            },
+            else => {
+                const expr = self.parseTopLevelExpr() catch {
+                    _ = try stderr.write("TopLevelExpression Parsing failed\n");
+                    continue;
+                };
+                expr.destroy(self.arena.allocator());
+                _ = try stdout.write("TopLevelExpression Parsed\n");
+            },
+        }
+    }
+}
