@@ -54,6 +54,27 @@ fn parseBinOpRHS(self: *Self, minimal_prec: usize, LHS: *AstExpr) ParserError!*A
         output = try AstExpr.alloc(.{ .binary = .{ .operator = op.operator, .rhs = RHS, .lhs = output } }, self.arena.allocator());
     }
 }
+
+fn parsePrototype(self: *Self) ParserError!AstPrototype {
+    const current_token = try self.lexer.getNextToken();
+    if (current_token != Token.identifer) return error.InvalidToken;
+
+    const name = current_token.identifer;
+    var new_token = try self.lexer.getNextToken();
+    if (new_token != .parenthesis or new_token.parenthesis != .right) return error.InvalidToken;
+
+    var args = StringList.init(self.arena.allocator());
+    errdefer for (args.items) |i| i.deinit();
+
+    new_token = try self.lexer.getNextToken();
+    while (new_token == .identifer) : (new_token = try self.lexer.getNextToken()) {
+        try args.append(new_token.identifer);
+    }
+    if (new_token != .parenthesis or new_token.parenthesis != .left) return error.InvalidToken;
+
+    return AstPrototype{ .name = name, .args = args };
+}
+
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
     errdefer allocated_LHS.destroy(self.arena.allocator());
