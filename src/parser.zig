@@ -44,6 +44,26 @@ fn parseExpression(self: *Self) ParserError!*AstExpr {
     if (token != .operator) return allocated_LHS;
     return try self.parseBinOpRHS(0, allocated_LHS);
 }
+
+pub fn parseIdentifier(self: *Self) ParserError!*AstExpr {
+    const idName = try self.lexer.getCurrentToken();
+    var next_token = try self.lexer.getNextToken();
+    if (next_token != .parenthesis or next_token.parenthesis == .right)
+        return try AstExpr.alloc(.{ .variable = idName.identifer }, self.allocator);
+
+    next_token = try self.lexer.getNextToken();
+    var args = ArgList.init(self.arena.allocator());
+    errdefer for (args.items) |i| i.destroy(self.allocator);
+
+    while (true) : (next_token = try self.lexer.getNextToken()) {
+        try args.append(try self.parseExpression());
+        next_token = try self.lexer.getNextToken();
+        if (next_token == .parenthesis and next_token.parenthesis == .left) break;
+        if (next_token != .comma) return error.InvalidExpression;
+    }
+
+    return try AstExpr.alloc(.{ .call = .{ .args = args, .callee = idName.identifer } }, self.arena.allocator());
+}
 pub fn parseParenthesis(self: *Self) ParserError!*AstExpr {
     const expr = try parseExpression(self);
     errdefer expr.destroy(self.allocator);
