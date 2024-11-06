@@ -64,6 +64,17 @@ pub fn parseIdentifier(self: *Self) ParserError!*AstExpr {
 
     return try AstExpr.alloc(.{ .call = .{ .args = args, .callee = idName.identifer } }, self.arena.allocator());
 }
+
+pub fn parsePrimary(self: *Self) ParserError!*AstExpr {
+    const token = try self.lexer.getCurrentToken();
+    return switch (token) {
+        .identifer => try self.parseIdentifier(),
+        .number => try self.parseNumber(),
+        .parenthesis => if (token.parenthesis != .right) error.InvalidExpression else try self.parseParenthesis(),
+        else => error.InvalidExpression,
+    };
+}
+
 pub fn parseParenthesis(self: *Self) ParserError!*AstExpr {
     const expr = try parseExpression(self);
     errdefer expr.destroy(self.allocator);
