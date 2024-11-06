@@ -86,6 +86,12 @@ fn parseExtern(self: *Self) ParserError!AstPrototype {
     return try self.parsePrototype();
 }
 
+fn parseTopLevelExpr(self: *Self) ParserError!AstFunction {
+    const body = try self.parseExpression();
+    const proto = AstPrototype{ .args = StringList.init(self.arena.allocator()), .name = try String.init(self.arena.allocator()) };
+    return AstFunction{ .proto = proto, .body = body };
+}
+
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
     errdefer allocated_LHS.destroy(self.arena.allocator());
