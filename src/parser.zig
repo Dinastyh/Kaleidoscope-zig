@@ -32,3 +32,7 @@ pub fn init(allocator: Allocator, reader: Reader) ParserError!Self {
 pub fn deinit(self: *Self) void {
     self.arena.deinit();
 }
+
+fn parseNumber(self: *Self) ParserError!*AstExpr {
+    return try AstExpr.alloc(.{ .number = (try self.lexer.getCurrentToken()).number }, self.arena.allocator());
+}
