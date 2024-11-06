@@ -36,6 +36,24 @@ pub fn deinit(self: *Self) void {
 fn parseNumber(self: *Self) ParserError!*AstExpr {
     return try AstExpr.alloc(.{ .number = (try self.lexer.getCurrentToken()).number }, self.arena.allocator());
 }
+
+fn parseBinOpRHS(self: *Self, minimal_prec: usize, LHS: *AstExpr) ParserError!*AstExpr {
+    var output = LHS;
+    while (true) {
+        const op = try self.lexer.getCurrentToken();
+        if (op != Token.operator or op.operator.getPrecedence() < minimal_prec) return output;
+
+        _ = try self.lexer.getCurrentToken();
+        var RHS = try self.parsePrimary();
+        errdefer RHS.destroy(self.arena.allocator());
+
+        const next_op = try self.lexer.getNextToken();
+        if (next_op == Token.operator and next_op.operator.getPrecedence() > op.operator.getPrecedence()) {
+            RHS = try self.parseBinOpRHS(op.operator.getPrecedence() + 1, RHS);
+        }
+        output = try AstExpr.alloc(.{ .binary = .{ .operator = op.operator, .rhs = RHS, .lhs = output } }, self.arena.allocator());
+    }
+}
 fn parseExpression(self: *Self) ParserError!*AstExpr {
     const allocated_LHS = try self.parsePrimary();
     errdefer allocated_LHS.destroy(self.arena.allocator());
