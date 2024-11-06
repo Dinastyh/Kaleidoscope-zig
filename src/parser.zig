@@ -44,3 +44,12 @@ fn parseExpression(self: *Self) ParserError!*AstExpr {
     if (token != .operator) return allocated_LHS;
     return try self.parseBinOpRHS(0, allocated_LHS);
 }
+pub fn parseParenthesis(self: *Self) ParserError!*AstExpr {
+    const expr = try parseExpression(self);
+    errdefer expr.destroy(self.allocator);
+
+    const next_token = try self.lexer.getNextToken();
+    if (next_token != .parenthesis) return error.InvalidToken;
+    if (next_token.parenthesis != .left) return error.InvalidToken;
+    return expr;
+}
