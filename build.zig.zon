@@ -1,7 +1,12 @@
 .{
     .name = "Kaleidoscope-zig",
     .version = "0.0.1",
-    .dependencies = .{},
+    .dependencies = .{
+        .llvm = .{
+            .url = "https://github.com/kassane/llvm-zig/archive/main.tar.gz",
+            .hash = "122031a83c60af77e52e9a958e16ececdec5c4c3a13390463b4e5823cfb35f31228f",
+        },
+    },
 
     .paths = .{
         "build.zig",
